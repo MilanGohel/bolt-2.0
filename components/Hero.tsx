@@ -3,11 +3,13 @@
 import React, { useContext, useState } from "react";
 import { Button } from "./ui/button";
 import { ArrowRight, Link2 } from "lucide-react";
-import { MessagesContext } from "@/context/MessagesContext";
+import { Message, MessagesContext } from "@/context/MessagesContext";
 import { UserDetailsContext } from "@/context/UserDetailsContext";
 import SignInDialog from "./SignInDialog";
-import { auth } from "@clerk/nextjs/server";
 import { useUser } from "@clerk/nextjs";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useRouter } from "next/navigation";
 
 const suggestion = [
   "Create todo app",
@@ -20,20 +22,31 @@ const suggestion = [
 function Hero() {
   const { messages, setMessages } = useContext(MessagesContext);
   const { isSignedIn } = useUser();
-  const onGenerateClick = (input: string) => {
+  const router = useRouter();
+  const onGenerateClick = async (input: string) => {
     if (!isSignedIn) {
       setIsSignInDialogOpen(true);
       return;
     }
-
-    setMessages({
-      content: input,
+    const msg = {
+      content: input, 
       role: "user",
+    } as Message;
+
+    setMessages(msg);
+
+    const workspaceId = await CreateWorkSpace({
+      name: "New Workspace",
+      messages: msg 
     });
+
+    router.push(`/workspace/${workspaceId}`);
   };
 
   const [prompt, setPrompt] = useState<string>("");
   const [isSignInDialogOpen, setIsSignInDialogOpen] = useState<boolean>(false);
+  const CreateWorkSpace = useMutation(api.workspaces.CreateWorkspace);
+
   return (
     <div className="flex flex-col items-center mt-32 xl:mt-48 gap-3">
       <h2 className="text-4xl font-bold ">What should we build today?</h2>

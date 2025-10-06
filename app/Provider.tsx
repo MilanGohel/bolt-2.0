@@ -1,8 +1,7 @@
 "use client";
 import Header from "@/components/Header";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Message, MessagesContext } from "@/context/MessagesContext";
 import { UserDetails, UserDetailsContext } from "@/context/UserDetailsContext";
 import { useConvex, useQuery } from "convex/react";
@@ -37,7 +36,6 @@ function Provider({ children }: { children: React.ReactNode }) {
   }
   return (
     <>
-      <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
         <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
           <MessagesContext.Provider value={{ messages, setMessages }}>
             <UserDetailsContext.Provider value={{ userDetails, setUserDetails }}>
@@ -46,7 +44,6 @@ function Provider({ children }: { children: React.ReactNode }) {
             </UserDetailsContext.Provider>
           </MessagesContext.Provider>
         </NextThemesProvider>
-      </GoogleOAuthProvider>
     </>
   );
 }

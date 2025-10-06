@@ -7,5 +7,11 @@ export default defineSchema({
         email: v.string(),
         picture: v.string(),
         uid: v.string()
-    })
+    }),
+    workspaces: defineTable({
+        name: v.string(),
+        messages: v.any(),
+        fileData: v.optional(v.any()),
+        ownerId: v.string()
+    }).index("by_ownerId", ["ownerId"]),
 })
