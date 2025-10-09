@@ -7,8 +7,8 @@ export interface Message {
 }
 
 export const MessagesContext = createContext<{
-  messages: Message | undefined;
-  setMessages: React.Dispatch<React.SetStateAction<Message | undefined>>;
+  messages: Message[] | undefined;
+  setMessages: React.Dispatch<React.SetStateAction<Message[] | undefined>>;
 }>({
   messages: undefined,
   setMessages: () => {}

@@ -8,13 +8,13 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 import { ModeToggle } from "./ModeToggle";
+import { SidebarTrigger } from "./ui/sidebar";
 
 function Header() {
   return (
     <div className="w-full h-16 bg-white dark:bg-zinc-900  bg-zinc-100 shadow flex justify-between items-center px-4">
+      <SidebarTrigger />
       {/* logo */}
-      <div className="w-10 h-10 text-2xl">Logo</div>
-
       <div className="flex flex-row gap-3">
         {/* Theme Toggler */}
         <ModeToggle />

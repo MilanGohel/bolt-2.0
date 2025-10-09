@@ -4,10 +4,9 @@ import React, { useContext, useState } from "react";
 import { Button } from "./ui/button";
 import { ArrowRight, Link2 } from "lucide-react";
 import { Message, MessagesContext } from "@/context/MessagesContext";
-import { UserDetailsContext } from "@/context/UserDetailsContext";
 import SignInDialog from "./SignInDialog";
 import { useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 
@@ -21,23 +20,26 @@ const suggestion = [
 
 function Hero() {
   const { messages, setMessages } = useContext(MessagesContext);
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
   const router = useRouter();
   const onGenerateClick = async (input: string) => {
     if (!isSignedIn) {
       setIsSignInDialogOpen(true);
       return;
     }
+    if (input.trim().length === 0) return;
+
     const msg = {
-      content: input, 
+      content: input,
       role: "user",
     } as Message;
 
-    setMessages(msg);
+    setMessages([...(messages || []), msg]);
 
     const workspaceId = await CreateWorkSpace({
+      //TODO: Generate name using AI
       name: "New Workspace",
-      messages: msg 
+      messages: msg
     });
 
     router.push(`/workspace/${workspaceId}`);
@@ -66,6 +68,7 @@ function Hero() {
           <Button
             className="cursor-pointer"
             onClick={() => onGenerateClick(prompt)}
+            disabled={prompt.trim().length === 0}
           >
             <ArrowRight />
           </Button>

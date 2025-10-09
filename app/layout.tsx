@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+
 import Provider from "./Provider";
 import ConvexClientProvider from "./ConvexProviderWithClerk";
 import { ClerkProvider } from "@clerk/nextjs";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import Header from "@/components/Header";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -31,7 +36,15 @@ export default function RootLayout({
       >
         <ClerkProvider>
           <ConvexClientProvider>
-            <Provider>{children}</Provider>
+            <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
+              <SidebarProvider>
+                <AppSidebar />
+                <main className="w-full">
+                  <Header />
+                  {children}
+                </main>
+              </SidebarProvider>
+            </NextThemesProvider>
           </ConvexClientProvider>
         </ClerkProvider>
       </body>
