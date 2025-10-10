@@ -77,20 +77,28 @@ export const GetWorkspace = query({
     }
 })
 
-const ai = new GoogleGenAI({});
 export const GenerateWorkspaceName = action({
     args: {
         prompt: v.string(),
     },
     handler: async (ctx, args) => {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: args.prompt,
             config: {
                 maxOutputTokens: 300,
-                systemInstruction: "Based on the prompt generate a concise and descriptive name for a coding workspace. The name should be no more than 5 words.",
+                systemInstruction: {
+                    role: "model",
+                    parts: [
+                        {
+                            text: "Based on the prompt, generate a concise and descriptive name for a coding workspace (maximum 5 words). Respond with only the name itself — do not include explanations, examples, or any additional text."
+                        }
+                    ]
+                },
                 thinkingConfig: {
-                    thinkingBudget: 100
+                    thinkingBudget: 200
                 }
             }
         });

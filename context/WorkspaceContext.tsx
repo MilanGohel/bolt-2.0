@@ -10,11 +10,16 @@ export interface Workspace{
     workspaceId: string;
     messages: Message[] | undefined;
 }
+
 export const WorkspaceContext = createContext<{
     workspace: Workspace | undefined;
+    cachedWorkspaces: Workspace[];
     setCurrentWorkSpace: React.Dispatch<React.SetStateAction<Workspace | undefined>>;
+    setCachedWorkspaces: React.Dispatch<React.SetStateAction<Workspace[]>>;
 }>({
     // initial values
-    setCurrentWorkSpace: () => {},  
+    setCurrentWorkSpace: () => {},
+    cachedWorkspaces: [],
+    setCachedWorkspaces: () => {},  
     workspace: undefined
 });

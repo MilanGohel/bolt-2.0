@@ -37,13 +37,15 @@ export default function RootLayout({
         <ClerkProvider>
           <ConvexClientProvider>
             <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
-              <SidebarProvider>
-                <AppSidebar />
-                <main className="w-full">
-                  <Header />
-                  {children}
-                </main>
-              </SidebarProvider>
+              <Provider>
+                <SidebarProvider>
+                  <AppSidebar />
+                  <main className="w-full">
+                    <Header />
+                    {children}
+                  </main>
+                </SidebarProvider>
+              </Provider>
             </NextThemesProvider>
           </ConvexClientProvider>
         </ClerkProvider>

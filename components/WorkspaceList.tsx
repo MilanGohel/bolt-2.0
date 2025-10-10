@@ -3,6 +3,7 @@
 import { api } from "@/convex/_generated/api"
 import { useUser } from "@clerk/nextjs"
 import { usePaginatedQuery } from "convex/react"
+import { paginationOptsValidator } from "convex/server"
 import Link from "next/link"
 
 export default function WorkspaceList() {
@@ -21,8 +22,8 @@ export default function WorkspaceList() {
     status,
   } = usePaginatedQuery(
     api.workspaces.GetSidebarWorkspaces,
-    { userId: user.id },
-    { initialNumItems: 10 }
+    {},
+    {initialNumItems: 10}
   )
 
   return (
@@ -40,9 +41,8 @@ export default function WorkspaceList() {
         ) : (
           <div className="space-y-1 bg-transparent">
             {workspaces.map((workspace: any) => (
-              <Link href={`/workspace/${workspace._id}`}>
+              <Link href={`/workspace/${workspace._id}`} key={workspace._id}>
                 <div
-                  key={workspace._id}
                   className="flex items-center px-3 py-2 rounded-md text-sm cursor-pointer bg-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
                 >
                   <span className="truncate">

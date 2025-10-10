@@ -6,7 +6,7 @@ import { ArrowRight, Link2 } from "lucide-react";
 import { Message, MessagesContext } from "@/context/MessagesContext";
 import SignInDialog from "./SignInDialog";
 import { useUser } from "@clerk/nextjs";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +22,12 @@ function Hero() {
   const { messages, setMessages } = useContext(MessagesContext);
   const { isSignedIn, user } = useUser();
   const router = useRouter();
+  
+  const [prompt, setPrompt] = useState<string>("");
+  const [isSignInDialogOpen, setIsSignInDialogOpen] = useState<boolean>(false);
+  const CreateWorkSpace = useMutation(api.workspaces.CreateWorkspace);
+  const GenerateWorkspaceName = useAction(api.workspaces.GenerateWorkspaceName);
+
   const onGenerateClick = async (input: string) => {
     if (!isSignedIn) {
       setIsSignInDialogOpen(true);
@@ -35,19 +41,18 @@ function Hero() {
     } as Message;
 
     setMessages([...(messages || []), msg]);
+    const title = await GenerateWorkspaceName({ prompt: input });
 
     const workspaceId = await CreateWorkSpace({
       //TODO: Generate name using AI
-      name: "New Workspace",
-      messages: msg
+      name: title || "Unnamed Workspace",
+      messages: [msg]
     });
 
     router.push(`/workspace/${workspaceId}`);
   };
 
-  const [prompt, setPrompt] = useState<string>("");
-  const [isSignInDialogOpen, setIsSignInDialogOpen] = useState<boolean>(false);
-  const CreateWorkSpace = useMutation(api.workspaces.CreateWorkspace);
+
 
   return (
     <div className="flex flex-col items-center mt-32 xl:mt-48 gap-3">
