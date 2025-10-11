@@ -2,23 +2,15 @@
 import React, { useEffect, useState } from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Message, MessagesContext } from "@/context/MessagesContext";
-import { Workspace, WorkspaceContext } from "@/context/WorkspaceContext";
 
 function Provider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<Message[]>();
-  const [workspace, setCurrentWorkSpace] = useState<Workspace>();
-  const [cachedWorkspaces, setCachedWorkspaces] = useState<Workspace[]>([]);
 
-  useEffect(() => {
-    console.log("Workspace updated:", workspace);
-  }, [workspace]);
   return (
     <>
-      <WorkspaceContext.Provider value={{ workspace, setCurrentWorkSpace, cachedWorkspaces, setCachedWorkspaces }}>
         <MessagesContext.Provider value={{ messages, setMessages }}>
           {children}
         </MessagesContext.Provider>
-      </WorkspaceContext.Provider>
     </>
   );
 }

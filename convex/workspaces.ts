@@ -107,3 +107,27 @@ export const GenerateWorkspaceName = action({
     }
 })
 
+export const UpdateWorkspaceMessages = mutation({
+    args: {
+        workspaceId: v.string(),
+        messages: v.any(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("You must be logged in to update a workspace.");
+        }
+
+        const workspace = await ctx.db.query("workspaces").filter((q) => q.eq(q.field("_id"), args.workspaceId)).first();
+
+        if (!workspace) {
+            throw new Error("Workspace not found.");
+        }
+
+        if (workspace.ownerId !== identity.subject) {
+            throw new Error("You do not have access to update this workspace.");
+        }
+
+        await ctx.db.patch(workspace._id, { messages: args.messages });
+    }
+})
