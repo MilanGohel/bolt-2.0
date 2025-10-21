@@ -1,6 +1,7 @@
 "use client";
 
 import { Message, MessagesContext } from "@/context/MessagesContext";
+import { useCode } from "@/context/CodeContext";
 import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -10,6 +11,7 @@ import { useConvex, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useParams } from "next/navigation";
 import ReactMarkDown from "react-markdown";
+import axios from "axios";
 
 export interface ChatViewProps {
   workspaceId: string;
@@ -18,6 +20,7 @@ export interface ChatViewProps {
 
 export default function ChatView() {
   const { messages, setMessages } = useContext(MessagesContext);
+  const { updateFiles } = useCode();
   const { user } = useUser();
   const [prompt, setPrompt] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -25,6 +28,18 @@ export default function ChatView() {
   const workspaceId = params.id as string;
 
   const convex = useConvex();
+
+  // Parse AI response for code files
+  const parseAIResponse = (content: string) => {
+    try {
+      const response = JSON.parse(content);
+      if (response.files) {
+        updateFiles(response.files);
+      }
+    } catch (error) {
+      console.log("Failed to parse AI response as JSON:", error);
+    }
+  };
 
   // Load workspace data
   const workspaceData = useQuery(api.workspaces.GetWorkspace, { workspaceId });
@@ -37,99 +52,31 @@ export default function ChatView() {
   }, [workspaceData, setMessages]);
 
   // Trigger AI response when user sends a message
-  useEffect(() => {
-    if (messages && messages.length > 0 && !isGenerating) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === "user") {
-        setIsGenerating(true);
-        generateAiResponse(lastMessage.content);
-      }
-    }
-  }, [messages, isGenerating]);
+  // useEffect(() => {
+  //   if (messages && messages.length > 0 && !isGenerating) {
+  //     const lastMessage = messages[messages.length - 1];
+  //     if (lastMessage.role === "user") {
+  //       setIsGenerating(true);
+  //       generateAiResponse(lastMessage.content);
+  //     }
+  //   }
+  // }, [messages, isGenerating]);
 
   const generateAiResponse = useCallback(
     async (userInput: string) => {
       try {
         setPrompt("");
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messages: messages,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to get response");
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) return;
-
-        let aiResponse = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = new TextDecoder().decode(value);
-          const lines = chunk.split("\n");
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") {
-                // Save final messages to database
-                if (!messages) return;
-                if (messages[messages.length - 1].role !== "user") return;
-
-                const finalMessages = [
-                  ...(messages || []),
-                  { content: aiResponse, role: "model" as const },
-                ];
-                await convex.mutation(api.workspaces.UpdateWorkspaceMessages, {
-                  workspaceId: workspaceId,
-                  messages: finalMessages,
-                });
-
-                // Reset generating flag
-                setIsGenerating(false);
-                return;
-              }
-
-              try {
-                const parsed = JSON.parse(data);
-                aiResponse += parsed.content;
-
-                // Update messages with streaming content
-                setMessages((prev) => {
-                  const newMessages = [...(prev || [])];
-                  const lastMessage = newMessages[newMessages.length - 1];
-
-                  if (lastMessage && lastMessage.role === "model") {
-                    // Update existing AI message
-                    newMessages[newMessages.length - 1] = {
-                      ...lastMessage,
-                      content: aiResponse,
-                    };
-                  } else {
-                    // Create new AI message
-                    newMessages.push({
-                      content: aiResponse,
-                      role: "model" as const,
-                    });
-                  }
-
-                  return newMessages;
-                });
-              } catch (e) {
-                console.error("Error parsing stream data:", e);
-              }
-            }
-          }
-        }
+        const response = axios
+            .post("/api/chat", {
+                messages: messages,
+            })
+            .then((res) => {
+                console.log("Response:", res);
+                
+            })
+            .catch((err) => {
+                console.error("Error streaming response:", err);
+            });
       } catch (error) {
         console.error("Error streaming response:", error);
       }
@@ -193,14 +140,31 @@ export default function ChatView() {
                       className="rounded-full"
                     />
                   </div>
-                ) : (
-                  // AI Message: Aligned to the left
-                  <div className="flex flex-row gap-2 bg-white dark:bg-zinc-700 p-3 rounded-lg w-[80%] mr-auto border border-gray-200 dark:border-transparent">
-                    <div className="text-gray-800 dark:text-zinc-200 text-sm w-full text-left">
-                      <ReactMarkDown>{msg.content}</ReactMarkDown>
-                    </div>
-                  </div>
-                )}
+                 ) : (
+                   // AI Message: Aligned to the left
+                   <div className="flex flex-row gap-2 bg-white dark:bg-zinc-700 p-3 rounded-lg w-[80%] mr-auto border border-gray-200 dark:border-transparent">
+                     <div className="text-gray-800 dark:text-zinc-200 text-sm w-full text-left">
+                       {(() => {
+                         try {
+                           const response = JSON.parse(msg.content);
+                           return (
+                             <div>
+                               {response.projectTitle && (
+                                 <h3 className="font-bold text-lg mb-2">{response.projectTitle}</h3>
+                               )}
+                               {response.explanation && (
+                                 <p>{response.explanation}</p>
+                               )}
+                             </div>
+                           );
+                         } catch (error) {
+                           // Fallback to markdown if not JSON
+                           return <ReactMarkDown>{msg.content}</ReactMarkDown>;
+                         }
+                       })()}
+                     </div>
+                   </div>
+                 )}
               </div>
             ))}
           {isGenerating && (

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Message, MessagesContext } from "@/context/MessagesContext";
+import { CodeProvider } from "@/context/CodeContext";
 
 function Provider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<Message[]>();
@@ -9,7 +10,9 @@ function Provider({ children }: { children: React.ReactNode }) {
   return (
     <>
         <MessagesContext.Provider value={{ messages, setMessages }}>
-          {children}
+          <CodeProvider>
+            {children}
+          </CodeProvider>
         </MessagesContext.Provider>
     </>
   );
