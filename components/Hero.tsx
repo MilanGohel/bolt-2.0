@@ -40,7 +40,7 @@ function Hero() {
       role: "user",
     } as Message;
 
-    setMessages([...(messages || []), msg]);
+    setMessages(prev => [...(prev || []), msg]);
     const title = await GenerateWorkspaceName({ prompt: input });
 
     const workspaceId = await CreateWorkSpace({

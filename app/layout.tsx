@@ -38,7 +38,7 @@ export default function RootLayout({
           <ConvexClientProvider>
             <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
               <Provider>
-                <SidebarProvider>
+                <SidebarProvider defaultOpen={false}>
                   <AppSidebar />
                   <main className="w-full">
                     <Header />

@@ -7,7 +7,7 @@ import {
   SandpackPreview,
   SandpackFileExplorer,
 } from "@codesandbox/sandpack-react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState, useRef } from "react";
 import { MessagesContext } from "@/context/MessagesContext";
 import axios from "axios";
 import { useConvex, useMutation, useQuery } from "convex/react";
@@ -27,30 +27,45 @@ export default function CodeView() {
   const [template, setTemplate] = useState<"react-ts" | "node">("react-ts");
   const [hasGeneratedTemplate, setHasGeneratedTemplate] = useState(false);
   const convex = useConvex();
+  const lastProcessedMessageRef = useRef<string | null>(null);
 
   const workspaceData = useQuery(api.workspaces.GetWorkspace, { workspaceId });
   //set the files from database
   useEffect(() => {
-      setFiles(workspaceData?.fileData.files ?? {});
-      setDependencies(workspaceData?.fileData.dependencies ?? {});
-  },[workspaceId])
+    setFiles(workspaceData?.fileData.files ?? {});
+    setDependencies(workspaceData?.fileData.dependencies ?? {});
+  }, [workspaceId]);
 
   useEffect(() => {
-    if (messages && messages.length > 0 && !isGenerating && !hasGeneratedTemplate) {
+    if (
+      messages &&
+      messages.length > 0 &&
+      !isGenerating &&
+      !hasGeneratedTemplate
+    ) {
       const lastMessage = messages[messages.length - 1];
-      console.log("Last message:", lastMessage);
-      if (lastMessage.role === "user" && messages.length === 1) {
-        setIsGenerating(true);
-        setHasGeneratedTemplate(true);
-        generateTemplate(lastMessage.content);
-        generateAiResponse();
+      const messageKey = `${lastMessage.role}-${lastMessage.content}-${messages.length}`;
+      
+      // Only process if this is a new message we haven't seen before
+      if (lastProcessedMessageRef.current !== messageKey) {
+        console.log("Last message:", lastMessage);
+        lastProcessedMessageRef.current = messageKey;
+        
+        if (lastMessage.role === "user" && messages.length === 1) {
+          setIsGenerating(true);
+          setHasGeneratedTemplate(true);
+          generateTemplate(lastMessage.content);
+        } else if (lastMessage.role === "user") {
+          setIsGenerating(true);
+          generateAiResponse();
+        }
+        updateWorkspaceMessages({
+          workspaceId: workspaceId,
+          messages: messages,
+        });
       }
-      else if(lastMessage.role === "user"){
-        setIsGenerating(true);
-        generateAiResponse();
-      } 
     }
-  }, [messages, isGenerating, hasGeneratedTemplate]);
+  }, [messages, isGenerating, hasGeneratedTemplate, workspaceId]);
 
   const generateTemplate = useCallback(
     async (prompt: string) => {
@@ -61,12 +76,20 @@ export default function CodeView() {
       setTemplate(response.data.template);
       setFiles((prev) => ({ ...prev, ...response.data.files }));
       setDependencies((prev) => ({ ...prev, ...response.data.dependencies }));
+
+      // Call generateAiResponse after template is generated
+      generateAiResponse();
     },
     [messages]
   );
-  
-  const updateWorkspaceFileData = useMutation(api.workspaces.UpdateWorkspaceFileData);
-  useEffect(() => { 
+
+  const updateWorkspaceFileData = useMutation(
+    api.workspaces.UpdateWorkspaceFileData
+  );
+  const updateWorkspaceMessages = useMutation(
+    api.workspaces.UpdateWorkspaceMessages
+  );
+  useEffect(() => {
     updateWorkspaceFileData({
       workspaceId: workspaceId,
       fileData: {
@@ -74,52 +97,61 @@ export default function CodeView() {
         dependencies: dependencies,
       },
     });
-  },[files, dependencies])
+  }, [files, dependencies]);
 
-  const generateAiResponse = useCallback(
-    async () => {
+
+  const generateAiResponse = useCallback(async () => {
+    try {
+      const response = await axios.post("/api/chat", {
+        messages: messages,
+      });
+
+      console.log("Response:", response.data);
+      const aiResponse = response.data.content;
+      console.log("AI Response content:", aiResponse);
+
+      // Parse the AI response JSON
       try {
-        const response = await axios.post("/api/chat", {
-          messages: messages,
-        });
-        
-        console.log("Response:", response.data);
-        const aiResponse = response.data.content;
-        console.log("AI Response content:", aiResponse);
-        
-        // Parse the AI response JSON
-        try {
-          // Strip markdown code blocks if present
-          let cleanResponse = aiResponse;
-          if (aiResponse.includes('```json')) {
-            cleanResponse = aiResponse.replace(/```json\s*/, '').replace(/\s*```$/, '');
-          } else if (aiResponse.includes('```')) {
-            cleanResponse = aiResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
-          }
-          console.log("Clean response:", cleanResponse);
-          const parsedResponse = JSON.parse(cleanResponse);
-          console.log("Parsed response:", parsedResponse);
-          if (parsedResponse.files) {
-            const mergedFiles = { ...files, ...parsedResponse.files };
-            setFiles(mergedFiles);
-
-            console.log("Merged files:", mergedFiles);
-          }
-          if (parsedResponse.dependencies) {
-            const mergedDependencies = { ...dependencies, ...parsedResponse.dependencies };
-            setDependencies(mergedDependencies);
-          }
-        } catch (error) {
-          console.error("Error parsing AI response:", error);
+        // Strip markdown code blocks if present
+        let cleanResponse = aiResponse;
+        if (aiResponse.includes("```json")) {
+          cleanResponse = aiResponse
+            .replace(/```json\s*/, "")
+            .replace(/\s*```$/, "");
+        } else if (aiResponse.includes("```")) {
+          cleanResponse = aiResponse
+            .replace(/```\s*/, "")
+            .replace(/\s*```$/, "");
         }
-        
-        setIsGenerating(false);
+        console.log("Clean response:", cleanResponse);
+        const parsedResponse = JSON.parse(cleanResponse);
+        console.log("Parsed response:", parsedResponse);
+        if (parsedResponse.files) {
+          const mergedFiles = { ...files, ...parsedResponse.files };
+          setFiles(mergedFiles);
+
+          console.log("Merged files:", mergedFiles);
+        }
+        if (parsedResponse.dependencies) {
+          const mergedDependencies = {
+            ...dependencies,
+            ...parsedResponse.dependencies,
+          };
+          setDependencies(mergedDependencies);
+        }
+
       } catch (error) {
-        console.error("Error streaming response:", error);
+        console.error("Error parsing AI response:", error);
       }
-    },
-    [messages]
-  );
+
+      // Add the AI response to messages (outside try block to ensure it always executes)
+      setMessages(prev => [...(prev || []), { content: aiResponse, role: "model" }]);
+
+      setIsGenerating(false);
+    } catch (error) {
+      console.error("Error streaming response:", error);
+    }
+  }, [messages]);
 
   return (
     <div className="flex-1 p-4 overflow-y-auto dark:bg-zinc-800 bg-zinc-100 rounded-lg w-full">
@@ -160,11 +192,15 @@ export default function CodeView() {
       <SandpackProvider
         key={`sandpack-${Object.keys(files).length}-${activeTab}`}
         theme={"dark"}
-        files={Object.keys(files).length > 0 ? files : {
-          "index.tsx": {
-            code: "// Loading template...",
-          }
-        }}
+        files={
+          Object.keys(files).length > 0
+            ? files
+            : {
+                "index.tsx": {
+                  code: "// Loading template...",
+                },
+              }
+        }
         template={Object.keys(files).length > 0 ? undefined : template}
         customSetup={{
           dependencies: dependencies,

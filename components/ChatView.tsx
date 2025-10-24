@@ -45,44 +45,11 @@ export default function ChatView() {
   const workspaceData = useQuery(api.workspaces.GetWorkspace, { workspaceId });
 
   useEffect(() => {
-    if (workspaceData) {
+    if (workspaceData && (!messages || messages.length === 0)) {
       setMessages(workspaceData.messages ?? []);
       console.log("Workspace data loaded:", workspaceData);
     }
-  }, [workspaceData, setMessages]);
-
-  // Trigger AI response when user sends a message
-  // useEffect(() => {
-  //   if (messages && messages.length > 0 && !isGenerating) {
-  //     const lastMessage = messages[messages.length - 1];
-  //     if (lastMessage.role === "user") {
-  //       setIsGenerating(true);
-  //       generateAiResponse(lastMessage.content);
-  //     }
-  //   }
-  // }, [messages, isGenerating]);
-
-  const generateAiResponse = useCallback(
-    async (userInput: string) => {
-      try {
-        setPrompt("");
-        const response = axios
-            .post("/api/chat", {
-                messages: messages,
-            })
-            .then((res) => {
-                console.log("Response:", res);
-                
-            })
-            .catch((err) => {
-                console.error("Error streaming response:", err);
-            });
-      } catch (error) {
-        console.error("Error streaming response:", error);
-      }
-    },
-    [messages, workspaceId, convex]
-  );
+  }, [workspaceData, setMessages, messages]);
 
   const onGenerateClick = async (input: string) => {
     if (!input.trim()) return;
@@ -91,13 +58,11 @@ export default function ChatView() {
     const userMessage = { content: input, role: "user" as const };
     const updatedMessages = [...(messages || []), userMessage];
     setMessages(updatedMessages);
-
-    // Save user message to database
-    await convex.mutation(api.workspaces.UpdateWorkspaceMessages, {
-      workspaceId: workspaceId,
-      messages: updatedMessages,
-    });
   };
+
+  useEffect(() => {
+    console.log(messages);
+  },[messages])
 
   // Conditional rendering after all hooks
   if (!workspaceData) {
