@@ -132,3 +132,27 @@ export const UpdateWorkspaceMessages = mutation({
         await ctx.db.patch(workspace._id, { messages: args.messages });
     }
 })
+
+export const UpdateWorkspaceFileData = mutation({
+    args: {
+        workspaceId: v.string(),
+        fileData: v.any(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            return;
+        }
+
+        const workspace = await ctx.db.query("workspaces").filter((q) => q.eq(q.field("_id"), args.workspaceId)).first();
+        if (!workspace) {
+            return;
+        }
+
+        if (workspace.ownerId !== identity.subject) {
+            return;
+        }
+
+        await ctx.db.patch(workspace._id, { fileData: args.fileData });
+    }
+})

@@ -10,10 +10,15 @@ import {
 import { useCallback, useContext, useEffect, useState } from "react";
 import { MessagesContext } from "@/context/MessagesContext";
 import axios from "axios";
+import { useConvex, useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useParams } from "next/navigation";
 
 export interface CodeViewProps {}
 
 export default function CodeView() {
+  const params = useParams<{ id: string }>();
+  const workspaceId = params.id as string;
   const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
   const [files, setFiles] = useState<Record<string, { code: string }>>({});
   const [dependencies, setDependencies] = useState<Record<string, string>>({});
@@ -21,6 +26,14 @@ export default function CodeView() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [template, setTemplate] = useState<"react-ts" | "node">("react-ts");
   const [hasGeneratedTemplate, setHasGeneratedTemplate] = useState(false);
+  const convex = useConvex();
+
+  const workspaceData = useQuery(api.workspaces.GetWorkspace, { workspaceId });
+  //set the files from database
+  useEffect(() => {
+      setFiles(workspaceData?.fileData.files ?? {});
+      setDependencies(workspaceData?.fileData.dependencies ?? {});
+  },[workspaceId])
 
   useEffect(() => {
     if (messages && messages.length > 0 && !isGenerating && !hasGeneratedTemplate) {
@@ -46,12 +59,22 @@ export default function CodeView() {
       });
 
       setTemplate(response.data.template);
-      setFiles(response.data.files);
-      setDependencies(response.data.dependencies);
-      return response.data;
+      setFiles((prev) => ({ ...prev, ...response.data.files }));
+      setDependencies((prev) => ({ ...prev, ...response.data.dependencies }));
     },
     [messages]
   );
+  
+  const updateWorkspaceFileData = useMutation(api.workspaces.UpdateWorkspaceFileData);
+  useEffect(() => { 
+    updateWorkspaceFileData({
+      workspaceId: workspaceId,
+      fileData: {
+        files: files,
+        dependencies: dependencies,
+      },
+    });
+  },[files, dependencies])
 
   const generateAiResponse = useCallback(
     async () => {
@@ -73,11 +96,14 @@ export default function CodeView() {
           } else if (aiResponse.includes('```')) {
             cleanResponse = aiResponse.replace(/```\s*/, '').replace(/\s*```$/, '');
           }
-          
+          console.log("Clean response:", cleanResponse);
           const parsedResponse = JSON.parse(cleanResponse);
+          console.log("Parsed response:", parsedResponse);
           if (parsedResponse.files) {
             const mergedFiles = { ...files, ...parsedResponse.files };
             setFiles(mergedFiles);
+
+            console.log("Merged files:", mergedFiles);
           }
           if (parsedResponse.dependencies) {
             const mergedDependencies = { ...dependencies, ...parsedResponse.dependencies };

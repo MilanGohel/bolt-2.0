@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-// import { ai } from "@/lib/ai";
 import { getSystemPrompt } from "@/utils/prompts";
 import { GoogleGenAI } from "@google/genai";
 
