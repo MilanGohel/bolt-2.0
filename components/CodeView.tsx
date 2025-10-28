@@ -1,5 +1,4 @@
 "use client";
-import Lookup from "@/data/Lookup";
 import {
   SandpackProvider,
   SandpackLayout,
@@ -7,151 +6,17 @@ import {
   SandpackPreview,
   SandpackFileExplorer,
 } from "@codesandbox/sandpack-react";
-import { useCallback, useContext, useEffect, useState, useRef } from "react";
-import { MessagesContext } from "@/context/MessagesContext";
-import axios from "axios";
-import { useConvex, useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useParams } from "next/navigation";
+import { useState } from "react";
 
-export interface CodeViewProps {}
+export interface CodeViewProps {
+  files: Record<string, { code: string }>;
+  dependencies: Record<string, string>;
+  template: "react-ts" | "node";
+  devDependencies?: Record<string, string>;
+}
 
-export default function CodeView() {
-  const params = useParams<{ id: string }>();
-  const workspaceId = params.id as string;
+export default function CodeView({ files, dependencies, template, devDependencies }: CodeViewProps) {
   const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
-  const [files, setFiles] = useState<Record<string, { code: string }>>({});
-  const [dependencies, setDependencies] = useState<Record<string, string>>({});
-  const { messages, setMessages } = useContext(MessagesContext);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [template, setTemplate] = useState<"react-ts" | "node">("react-ts");
-  const [hasGeneratedTemplate, setHasGeneratedTemplate] = useState(false);
-  const convex = useConvex();
-  const lastProcessedMessageRef = useRef<string | null>(null);
-
-  const workspaceData = useQuery(api.workspaces.GetWorkspace, { workspaceId });
-  //set the files from database
-  useEffect(() => {
-    setFiles(workspaceData?.fileData.files ?? {});
-    setDependencies(workspaceData?.fileData.dependencies ?? {});
-  }, [workspaceId]);
-
-  useEffect(() => {
-    if (
-      messages &&
-      messages.length > 0 &&
-      !isGenerating &&
-      !hasGeneratedTemplate
-    ) {
-      const lastMessage = messages[messages.length - 1];
-      const messageKey = `${lastMessage.role}-${lastMessage.content}-${messages.length}`;
-      
-      // Only process if this is a new message we haven't seen before
-      if (lastProcessedMessageRef.current !== messageKey) {
-        console.log("Last message:", lastMessage);
-        lastProcessedMessageRef.current = messageKey;
-        
-        if (lastMessage.role === "user" && messages.length === 1) {
-          setIsGenerating(true);
-          setHasGeneratedTemplate(true);
-          generateTemplate(lastMessage.content);
-        } else if (lastMessage.role === "user") {
-          setIsGenerating(true);
-          generateAiResponse();
-        }
-        updateWorkspaceMessages({
-          workspaceId: workspaceId,
-          messages: messages,
-        });
-      }
-    }
-  }, [messages, isGenerating, hasGeneratedTemplate, workspaceId]);
-
-  const generateTemplate = useCallback(
-    async (prompt: string) => {
-      const response = await axios.post("/api/template", {
-        prompt: prompt,
-      });
-
-      setTemplate(response.data.template);
-      setFiles((prev) => ({ ...prev, ...response.data.files }));
-      setDependencies((prev) => ({ ...prev, ...response.data.dependencies }));
-
-      // Call generateAiResponse after template is generated
-      generateAiResponse();
-    },
-    [messages]
-  );
-
-  const updateWorkspaceFileData = useMutation(
-    api.workspaces.UpdateWorkspaceFileData
-  );
-  const updateWorkspaceMessages = useMutation(
-    api.workspaces.UpdateWorkspaceMessages
-  );
-  useEffect(() => {
-    updateWorkspaceFileData({
-      workspaceId: workspaceId,
-      fileData: {
-        files: files,
-        dependencies: dependencies,
-      },
-    });
-  }, [files, dependencies]);
-
-
-  const generateAiResponse = useCallback(async () => {
-    try {
-      const response = await axios.post("/api/chat", {
-        messages: messages,
-      });
-
-      console.log("Response:", response.data);
-      const aiResponse = response.data.content;
-      console.log("AI Response content:", aiResponse);
-
-      // Parse the AI response JSON
-      try {
-        // Strip markdown code blocks if present
-        let cleanResponse = aiResponse;
-        if (aiResponse.includes("```json")) {
-          cleanResponse = aiResponse
-            .replace(/```json\s*/, "")
-            .replace(/\s*```$/, "");
-        } else if (aiResponse.includes("```")) {
-          cleanResponse = aiResponse
-            .replace(/```\s*/, "")
-            .replace(/\s*```$/, "");
-        }
-        console.log("Clean response:", cleanResponse);
-        const parsedResponse = JSON.parse(cleanResponse);
-        console.log("Parsed response:", parsedResponse);
-        if (parsedResponse.files) {
-          const mergedFiles = { ...files, ...parsedResponse.files };
-          setFiles(mergedFiles);
-
-          console.log("Merged files:", mergedFiles);
-        }
-        if (parsedResponse.dependencies) {
-          const mergedDependencies = {
-            ...dependencies,
-            ...parsedResponse.dependencies,
-          };
-          setDependencies(mergedDependencies);
-        }
-
-      } catch (error) {
-        console.error("Error parsing AI response:", error);
-      }
-
-      // Add the AI response to messages (outside try block to ensure it always executes)
-      setMessages(prev => [...(prev || []), { content: aiResponse, role: "model" }]);
-
-      setIsGenerating(false);
-    } catch (error) {
-      console.error("Error streaming response:", error);
-    }
-  }, [messages]);
 
   return (
     <div className="flex-1 p-4 overflow-y-auto dark:bg-zinc-800 bg-zinc-100 rounded-lg w-full">
@@ -170,57 +35,40 @@ export default function CodeView() {
 
         <button
           onClick={() => setActiveTab("code")}
-          className={`relative z-10 h-6 text-sm px-4 py-1 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center min-w-[60px] ${
-            activeTab === "code"
-              ? "text-blue-600"
-              : "text-zinc-400 hover:text-zinc-200"
-          }`}
+          className={`relative z-10 h-6 text-sm px-4 py-1 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center min-w-[60px] ${activeTab === "code"
+            ? "text-blue-600"
+            : "text-zinc-400 hover:text-zinc-200"
+            }`}
         >
           Code
         </button>
         <button
           onClick={() => setActiveTab("preview")}
-          className={`relative z-10 h-6 text-sm px-4 py-1 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center min-w-[60px] ${
-            activeTab === "preview"
-              ? "text-blue-600"
-              : "text-zinc-400 hover:text-zinc-200"
-          }`}
+          className={`relative z-10 h-6 text-sm px-4 py-1 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center min-w-[60px] ${activeTab === "preview"
+            ? "text-blue-600"
+            : "text-zinc-400 hover:text-zinc-200"
+            }`}
         >
           Preview
         </button>
       </div>
       <SandpackProvider
-        key={`sandpack-${Object.keys(files).length}-${activeTab}`}
         theme={"dark"}
-        files={
-          Object.keys(files).length > 0
-            ? files
-            : {
-                "index.tsx": {
-                  code: "// Loading template...",
-                },
-              }
-        }
-        template={Object.keys(files).length > 0 ? undefined : template}
+        files={files}
         customSetup={{
-          dependencies: dependencies,
-          entry: "index.tsx",
+          dependencies,
+          devDependencies
         }}
+        template={template}
         options={{
           externalResources: ["https://cdn.tailwindcss.com/"],
-          recompileMode: "delayed",
-          recompileDelay: 300,
+          
         }}
       >
         <SandpackLayout>
-          {activeTab === "code" ? (
-            <>
-              <SandpackFileExplorer style={{ height: "80vh" }} />
-              <SandpackCodeEditor style={{ height: "80vh" }} />
-            </>
-          ) : (
-            <SandpackPreview style={{ height: "80vh" }} showNavigator={true} />
-          )}
+          <SandpackFileExplorer style={{ height: "80vh", display: activeTab === "code" ? "block" : "none" }} />
+          <SandpackCodeEditor style={{ height: "80vh", display: activeTab === "code" ? "block" : "none" }} />
+          <SandpackPreview style={{ height: "80vh", display: activeTab === "preview" ? "" : "none" }} showNavigator />
         </SandpackLayout>
       </SandpackProvider>
     </div>

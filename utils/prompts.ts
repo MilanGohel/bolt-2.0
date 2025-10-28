@@ -12,6 +12,9 @@ export const getSystemPrompt = () => {
   "dependencies": {
     "package-name": "version"
   },
+  "devDependencies": {
+    "package-name": "version" 
+  },
   "projectTitle": "Project Name",
   "explanation": "Brief description"
 }
@@ -29,7 +32,7 @@ CRITICAL RULES:
 
     Example response for "create a todo app":
     {
-      "files": {
+      "files": {  
         "App.tsx": {
           "code": "import React, { useState } from 'react';\\n\\nfunction App() {\\n  const [todos, setTodos] = useState([]);\\n  return <div>Todo App</div>;\\n}\\n\\nexport default App;"
         }

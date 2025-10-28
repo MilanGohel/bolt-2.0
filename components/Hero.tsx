@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useContext, useState } from "react";
+import React, { use, useContext, useState } from "react";
 import { Button } from "./ui/button";
 import { ArrowRight, Link2 } from "lucide-react";
-import { Message, MessagesContext } from "@/context/MessagesContext";
 import SignInDialog from "./SignInDialog";
 import { useUser } from "@clerk/nextjs";
 import { useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
+import { Message, useWorkspace } from "@/store/useWorkspace";
 
 const suggestion = [
   "Create todo app",
@@ -19,7 +19,6 @@ const suggestion = [
 ];
 
 function Hero() {
-  const { messages, setMessages } = useContext(MessagesContext);
   const { isSignedIn, user } = useUser();
   const router = useRouter();
   
@@ -27,7 +26,10 @@ function Hero() {
   const [isSignInDialogOpen, setIsSignInDialogOpen] = useState<boolean>(false);
   const CreateWorkSpace = useMutation(api.workspaces.CreateWorkspace);
   const GenerateWorkspaceName = useAction(api.workspaces.GenerateWorkspaceName);
+  const ClassifyProjectType = useAction(api.workspaces.classifyProjectType);
+  const SetWorkspaceTemplateFiles = useMutation(api.workspaces.SetWorkspaceTemplateFiles);
 
+  const {messages, addMessage} = useWorkspace();
   const onGenerateClick = async (input: string) => {
     if (!isSignedIn) {
       setIsSignInDialogOpen(true);
@@ -36,23 +38,25 @@ function Hero() {
     if (input.trim().length === 0) return;
 
     const msg = {
-      content: input,
+      parts: [{text: input}],
       role: "user",
     } as Message;
 
-    setMessages(prev => [...(prev || []), msg]);
+    addMessage(msg);
     const title = await GenerateWorkspaceName({ prompt: input });
 
+    const template = await ClassifyProjectType({ prompt: input }) as "react-ts" | "node";
+    
     const workspaceId = await CreateWorkSpace({
       //TODO: Generate name using AI
       name: title || "Unnamed Workspace",
-      messages: [msg]
+      messages: [msg],
+      template: template || "react-ts",
     });
+    await SetWorkspaceTemplateFiles({ workspaceId, template });
 
     router.push(`/workspace/${workspaceId}`);
   };
-
-
 
   return (
     <div className="flex flex-col items-center mt-32 xl:mt-48 gap-3">

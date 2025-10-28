@@ -5,10 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 
 export const POST = async (req: NextRequest) => {
   const { prompt } = await req.json();
-
-  const normalizedPrompt = prompt.toLowerCase();
-
-  let template;
+  
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",

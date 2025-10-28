@@ -11,7 +11,10 @@ export default defineSchema({
     workspaces: defineTable({
         name: v.string(),
         messages: v.any(),
-        fileData: v.optional(v.any()),
-        ownerId: v.string()
+        files: v.optional(v.any()),
+        dependencies: v.optional(v.any()),
+        ownerId: v.string(),
+        devDependencies: v.optional(v.any()),
+        template: v.optional(v.union(v.literal("react-ts"), v.literal("node"))),
     }).index("by_ownerId", ["ownerId"]),
 })

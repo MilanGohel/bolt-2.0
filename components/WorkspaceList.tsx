@@ -3,7 +3,6 @@
 import { api } from "@/convex/_generated/api"
 import { useUser } from "@clerk/nextjs"
 import { usePaginatedQuery } from "convex/react"
-import { paginationOptsValidator } from "convex/server"
 import Link from "next/link"
 
 export default function WorkspaceList() {

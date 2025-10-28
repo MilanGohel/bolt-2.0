@@ -1,88 +1,24 @@
 "use client";
 
-import { Message, MessagesContext } from "@/context/MessagesContext";
-import { useCode } from "@/context/CodeContext";
 import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { ArrowRight, Divide, Link2, Loader2 } from "lucide-react";
-import { useConvex, useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useParams } from "next/navigation";
 import ReactMarkDown from "react-markdown";
-import axios from "axios";
+import { Message } from "@/store/useWorkspace";
 
 export interface ChatViewProps {
-  workspaceId: string;
   messages: Message[];
+  onGenerateClick: (prompt: string) => void;
+  isGenerating: boolean;  
+  prompt: string;
+  setPrompt: (prompt: string) => void;
 }
 
-export default function ChatView() {
-  const { messages, setMessages } = useContext(MessagesContext);
-  const { updateFiles } = useCode();
+export default function ChatView({messages, onGenerateClick, isGenerating, prompt, setPrompt}: ChatViewProps) {
   const { user } = useUser();
-  const [prompt, setPrompt] = useState<string>("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const params = useParams<{ id: string }>();
-  const workspaceId = params.id as string;
-
-  const convex = useConvex();
-
-  // Parse AI response for code files
-  const parseAIResponse = (content: string) => {
-    try {
-      const response = JSON.parse(content);
-      if (response.files) {
-        updateFiles(response.files);
-      }
-    } catch (error) {
-      console.log("Failed to parse AI response as JSON:", error);
-    }
-  };
-
-  // Load workspace data
-  const workspaceData = useQuery(api.workspaces.GetWorkspace, { workspaceId });
-
-  useEffect(() => {
-    if (workspaceData && (!messages || messages.length === 0)) {
-      setMessages(workspaceData.messages ?? []);
-      console.log("Workspace data loaded:", workspaceData);
-    }
-  }, [workspaceData, setMessages, messages]);
-
-  const onGenerateClick = async (input: string) => {
-    if (!input.trim()) return;
-
-    // Add user message immediately
-    const userMessage = { content: input, role: "user" as const };
-    const updatedMessages = [...(messages || []), userMessage];
-    setMessages(updatedMessages);
-  };
-
-  useEffect(() => {
-    console.log(messages);
-  },[messages])
-
-  // Conditional rendering after all hooks
-  if (!workspaceData) {
-    return (
-      <div className="flex flex-row gap-2 w-full max-w-[20vw] p-4">
-        <Loader2 className="animate-spin" />
-        Loading workspace...
-      </div>
-    );
-  }
-
-  if (!messages) {
-    return (
-      <div className="flex flex-row gap-2 w-full max-w-[20vw] p-4">
-        <Loader2 className="animate-spin" />
-        Loading chat...
-      </div>
-    );
-  }
-
+  
   return (
     <div className="flex flex-col h-[85vh] w-[25%]">
       {/* Chat section - takes remaining space */}
@@ -95,7 +31,9 @@ export default function ChatView() {
                   // User Message: Aligned to the right
                   <div className="flex flex-row gap-2 bg-blue-500 dark:bg-zinc-900 p-3 rounded-lg w-[80%] ml-auto">
                     <div className="text-white text-sm w-full text-left">
-                      {msg.content}
+                      {msg.parts.map((part, idx) => (
+                        <span key={idx}>{part.text}</span>
+                      ))}
                     </div>
                     <Image
                       src={user?.imageUrl ?? ""}
@@ -111,7 +49,7 @@ export default function ChatView() {
                      <div className="text-gray-800 dark:text-zinc-200 text-sm w-full text-left">
                        {(() => {
                          try {
-                           const response = JSON.parse(msg.content);
+                           const response = JSON.parse(msg.parts.map(part => part.text).join(''));
                            return (
                              <div>
                                {response.projectTitle && (
@@ -124,7 +62,7 @@ export default function ChatView() {
                            );
                          } catch (error) {
                            // Fallback to markdown if not JSON
-                           return <ReactMarkDown>{msg.content}</ReactMarkDown>;
+                           return <ReactMarkDown>{msg && msg.parts && msg.parts.map(part => part.text).join('')}</ReactMarkDown>;
                          }
                        })()}
                      </div>
@@ -157,7 +95,7 @@ export default function ChatView() {
           <Button
             className="cursor-pointer"
             onClick={() => onGenerateClick(prompt)}
-            disabled={prompt.trim().length === 0}
+            disabled={prompt.trim().length === 0 || isGenerating}
           >
             <ArrowRight />
           </Button>
