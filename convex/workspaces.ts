@@ -117,6 +117,34 @@ export const GenerateWorkspaceName = action({
     }
 });
 
+export const AddWorkspaceMessage = mutation({
+    args: {
+        workspaceId: v.string(),
+        message: v.object({
+            parts: v.array(v.object({ text: v.string() })),
+            role: v.union(v.literal("user"), v.literal("model")),
+        }),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new ConvexError({ code: 401, severity: "high", message: "You must be logged in to update a workspace." });
+        }
+        
+        const workspace = await ctx.db.query("workspaces").filter((q) => q.eq(q.field("_id"), args.workspaceId)).first();
+
+        if (!workspace) {
+            throw new ConvexError({ code: 404, severity: "high", message: "Workspace not found." });
+        }
+
+        if (workspace.ownerId !== identity.subject) {
+            throw new ConvexError({ code: 403, severity: "high", message: "You do not have access to update this workspace." });
+        }
+
+        await ctx.db.patch(workspace._id, { messages: [...workspace.messages, args.message] });
+    }
+})
+
 export const UpdateWorkspaceMessages = mutation({
     args: {
         workspaceId: v.string(),
@@ -162,7 +190,7 @@ export const UpdateWorkspaceFileData = mutation({
             throw new ConvexError({ code: 403, severity: "medium", message: "Access denied for this workspace." });
         }
 
-        await ctx.db.patch(workspace._id, { files: args.fileData.files, dependencies: args.fileData.dependencies, devDependencies: args.fileData.devDependencies??{} });
+        await ctx.db.patch(workspace._id, { files: args.fileData.files, dependencies: args.fileData.dependencies, devDependencies: args.fileData.devDependencies ?? {} });
     }
 });
 
@@ -201,7 +229,7 @@ export const GenerateAIResponse = action({
                         "code": "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nimport './index.css';\n\nconst root = ReactDOM.createRoot(\n  document.getElementById('root') as HTMLElement\n);\nroot.render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n"
                     },
                     "App.tsx": {
-                        "code": "import React, { useState } from 'react';\nimport TodoItem from './TodoItem';\n\ninterface Todo {\n  id: number;\n  text: string;\n  completed: boolean;\n}\n\nfunction App() {\n  const [todos, setTodos] = useState<Todo[]>([]);\n  const [newTodoText, setNewTodoText] = useState<string>('');\n\n  const handleAddTodo = () => {\n    if (newTodoText.trim() === '') return;\n    const newTodo: Todo = {\n      id: Date.now(),\n      text: newTodoText.trim(),\n      completed: false,\n    };\n    setTodos((prevTodos) => [...prevTodos, newTodo]);\n    setNewTodoText('');\n  };\n\n  const handleToggleComplete = (id: number) => {\n    setTodos((prevTodos) =>\n      prevTodos.map((todo) =>\n        todo.id === id ? { ...todo, completed: !todo.completed } : todo\n      )\n    );\n  };\n\n  const handleDeleteTodo = (id: number) => {\n    setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));\n  };\n\n  return (\n    <div className=\"min-h-screen bg-gray-100 flex items-center justify-center p-4\">\n      <div className=\"bg-white shadow-md rounded-lg p-6 w-full max-w-md\">\n        <h1 className=\"text-3xl font-bold text-center text-gray-800 mb-6\">Todo App</h1>\n        <div className=\"flex mb-4\">\n          <input\n            type=\"text\"\n            className=\"flex-grow border border-gray-300 rounded-l-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500\"\n            placeholder=\"Add a new todo...\"\n            value={newTodoText}\n            onChange={(e) => setNewTodoText(e.target.value)}\n            onKeyPress={(e) => {\n              if (e.key === 'Enter') {\n                handleAddTodo();\n              }\n            }}\n          />\n          <button\n            onClick={handleAddTodo}\n            className=\"bg-blue-600 text-white p-2 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500\"\n          >\n            Add\n          </button>\n        </div>\n        <ul className=\"space-y-3\">\n          {todos.map((todo) => (\n            <TodoItem\n              key={todo.id}\n              todo={todo}\n              onToggleComplete={handleToggleComplete}\n              onDeleteTodo={handleDeleteTodo}\n            />\n          ))}\n        </ul>\n        {todos.length === 0 && (\n          <p className=\"text-center text-gray-500 mt-6\">No todos yet! Add some above.</p>\n        )}\n      </div>\n    </div>\n  );\n}\n\nexport default App;\n"
+                        "code": "import React, { useState } from 'react';\nimport TodoItem from './TodoItem';\n\ninterface Todo {\n  id: number;\n  text: string;\n  completed: boolean;\n}\n\nfunction App() {\n  const [todos, setTodos] = useState<Todo[]>([]);\n  const [newTodoText, setNewTodoText] = useState<string>('');\n\n  const handleAddTodo = () => {\n    if (newTodoText.trim() === '') return;\n    const newTodo: Todo = {\n      id: Date.now(),\n      text: newTodoText.trim(),\n      completed: false,\n    };\n    setTodos((prevTodos) => [...prevTodos, newTodo]);\n    setNewTodoText('');\n  };\n\n  const handleToggleComplete = (id: number) => {\n    setTodos((prevTodos) =>\n      prevTodos.map((todo) =>\n        todo.id === id ? { ...todo, completed: !todo.completed } : todo\n      )\n    );\n  };\n\n  const handleDeleteTodo = (id: number) => {\n    setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));\n  };\n\n  return (\n    <div className=\"min-h-screen bg-gray-100 flex items-center justify-center p-4\">\n      <div className=\"bg-white shadow-md rounded-lg p-6 w-full max-w-md\">\n        <h1 className=\"text-3xl font-bold text-center text-gray-800 mb-6\">Todo App</h1>\n        <div className=\"flex mb-4\">\n          <input\n            type=\"text\"\n            className=\"flex-grow border border-gray-300 rounded-l-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500\"\n            placeholder=\"Add a new todo...\"\n            value={newTodoText}\n            onChange={(e) => setNewTodoText(e.target.value)}\n            onKeyPress={(e) => {\n              if (e.key === 'Enter') {\n                handleAddTodo();\n              }\n            }}\n          />\n          <button\n            onClick={handleAddTodo}\n            className=\"bg-red-600 text-white p-2 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500\"\n          >\n            Add\n          </button>\n        </div>\n        <ul className=\"space-y-3\">\n          {todos.map((todo) => (\n            <TodoItem\n              key={todo.id}\n              todo={todo}\n              onToggleComplete={handleToggleComplete}\n              onDeleteTodo={handleDeleteTodo}\n            />\n          ))}\n        </ul>\n        {todos.length === 0 && (\n          <p className=\"text-center text-gray-500 mt-6\">No todos yet! Add some above.</p>\n        )}\n      </div>\n    </div>\n  );\n}\n\nexport default App;\n"
                     },
                     "TodoItem.tsx": {
                         "code": "import React from 'react';\n\ninterface Todo {\n  id: number;\n  text: string;\n  completed: boolean;\n}\n\ninterface TodoItemProps {\n  todo: Todo;\n  onToggleComplete: (id: number) => void;\n  onDeleteTodo: (id: number) => void;\n}\n\nconst TodoItem: React.FC<TodoItemProps> = ({ todo, onToggleComplete, onDeleteTodo }) => {\n  return (\n    <li className=\"flex items-center justify-between bg-gray-50 p-3 rounded-md shadow-sm\">\n      <div className=\"flex items-center\">\n        <input\n          type=\"checkbox\"\n          checked={todo.completed}\n          onChange={() => onToggleComplete(todo.id)}\n          className=\"form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500\"\n        />\n        <span className={\`ml-3 text-lg \${todo.completed ? 'line-through text-gray-500' : 'text-gray-800'}\`}>\n          {todo.text}\n        </span>\n      </div>\n      <button\n        onClick={() => onDeleteTodo(todo.id)}\n        className=\"ml-4 px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500\"\n      >\n        Delete\n      </button>\n    </li>\n  );\n};\n\nexport default TodoItem;\n"

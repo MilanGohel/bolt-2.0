@@ -5,17 +5,22 @@ import {
   SandpackCodeEditor,
   SandpackPreview,
   SandpackFileExplorer,
+  useActiveCode,
+  useSandpack,
 } from "@codesandbox/sandpack-react";
-import { useState } from "react";
+import { Fragment, useEffect, useEffectEvent, useState } from "react";
+import CodeEditor from "./CodeEditor";
 
 export interface CodeViewProps {
   files: Record<string, { code: string }>;
   dependencies: Record<string, string>;
+  workspaceId: string;
   template: "react-ts" | "node";
   devDependencies?: Record<string, string>;
+  setFiles: (files: Record<string, { code: string }>) => void;
 }
 
-export default function CodeView({ files, dependencies, template, devDependencies }: CodeViewProps) {
+export default function CodeView({ files, setFiles, dependencies, template, devDependencies, workspaceId }: CodeViewProps) {
   const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
 
   return (
@@ -52,25 +57,20 @@ export default function CodeView({ files, dependencies, template, devDependencie
           Preview
         </button>
       </div>
-      <SandpackProvider
-        theme={"dark"}
+
+      {/* <CodeEditor
+        workspaceId={workspaceId}
+        activeTab={activeTab}
         files={files}
-        customSetup={{
-          dependencies,
-          devDependencies
-        }}
-        template={template}
-        options={{
-          externalResources: ["https://cdn.tailwindcss.com/"],
-          
-        }}
-      >
+        setFiles={setFiles}
+      /> */}
+    <Fragment>
         <SandpackLayout>
-          <SandpackFileExplorer style={{ height: "80vh", display: activeTab === "code" ? "block" : "none" }} />
-          <SandpackCodeEditor style={{ height: "80vh", display: activeTab === "code" ? "block" : "none" }} />
+          <SandpackFileExplorer style={{ height: "80vh", display: activeTab === "code" ? "" : "none" }} />
+          <SandpackCodeEditor style={{ height: "80vh", display: activeTab === "code" ? "" : "none" }} />
           <SandpackPreview style={{ height: "80vh", display: activeTab === "preview" ? "" : "none" }} showNavigator />
         </SandpackLayout>
-      </SandpackProvider>
+      </Fragment>
     </div>
   );
 }

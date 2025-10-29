@@ -2,7 +2,7 @@
 
 import React, { use, useContext, useState } from "react";
 import { Button } from "./ui/button";
-import { ArrowRight, Link2 } from "lucide-react";
+import { ArrowRight, Link2, Loader2 } from "lucide-react";
 import SignInDialog from "./SignInDialog";
 import { useUser } from "@clerk/nextjs";
 import { useAction, useMutation } from "convex/react";
@@ -30,21 +30,23 @@ function Hero() {
   const SetWorkspaceTemplateFiles = useMutation(api.workspaces.SetWorkspaceTemplateFiles);
 
   const {messages, addMessage} = useWorkspace();
+  const[isLoading, setIsLoading] = useState(false);
   const onGenerateClick = async (input: string) => {
     if (!isSignedIn) {
       setIsSignInDialogOpen(true);
       return;
     }
     if (input.trim().length === 0) return;
-
+    
+    setIsLoading(true);
     const msg = {
       parts: [{text: input}],
       role: "user",
     } as Message;
-
+    
     addMessage(msg);
     const title = await GenerateWorkspaceName({ prompt: input });
-
+    
     const template = await ClassifyProjectType({ prompt: input }) as "react-ts" | "node";
     
     const workspaceId = await CreateWorkSpace({
@@ -54,8 +56,9 @@ function Hero() {
       template: template || "react-ts",
     });
     await SetWorkspaceTemplateFiles({ workspaceId, template });
-
+    
     router.push(`/workspace/${workspaceId}`);
+    setIsLoading(true);
   };
 
   return (
@@ -77,9 +80,12 @@ function Hero() {
           <Button
             className="cursor-pointer"
             onClick={() => onGenerateClick(prompt)}
-            disabled={prompt.trim().length === 0}
+            disabled={prompt.trim().length === 0 || isLoading}
           >
-            <ArrowRight />
+            {
+              isLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : <ArrowRight/>
+            }
+          
           </Button>
         </div>
         <Button variant={"outline"} className="cursor-pointer">

@@ -18,6 +18,8 @@ interface WorkspaceState {
   messages: Message[];
   isGenerating: boolean;
   prompt: string;
+  activeFile: string;
+  currentWorkspaceId: string;
 }
 
 interface WorkspaceActions {
@@ -29,6 +31,8 @@ interface WorkspaceActions {
   setIsGenerating: (isGenerating: boolean) => void;
   setPrompt: (prompt: string) => void;
   setDevDependencies: (devDependencies: DepsMap) => void;
+  setActiveFile: (activeFile: string) => void;
+  setCurrentWorkspaceId: (workspaceId: string) => void;
 }
 
 export const useWorkspace = create<WorkspaceState & WorkspaceActions>(
@@ -41,8 +45,11 @@ export const useWorkspace = create<WorkspaceState & WorkspaceActions>(
       isGenerating: false,
       prompt: "",
       devDependencies: {} as DepsMap,
+      activeFile: "",
+      currentWorkspaceId: "",
     },
     (set, get) => ({
+      setCurrentWorkspaceId: (workspaceId) => set({ currentWorkspaceId: workspaceId }),
       setFiles: (files) => set({ files }),
       setDependencies: (dependencies) => set({ dependencies }),
       setTemplate: (template) => set({ template }),
@@ -51,6 +58,7 @@ export const useWorkspace = create<WorkspaceState & WorkspaceActions>(
       setIsGenerating: (isGenerating) => set({ isGenerating }),
       setPrompt: (prompt) => set({ prompt }),
       setDevDependencies: (devDependencies) => set({ devDependencies }),
+      setActiveFile: (activeFile) => set({ activeFile }),
     })
   )
 );

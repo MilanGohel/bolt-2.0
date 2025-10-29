@@ -72,7 +72,7 @@ export default function ChatView({messages, onGenerateClick, isGenerating, promp
             ))}
           {isGenerating && (
             <div className="flex flex-row gap-2 bg-white dark:bg-zinc-700 p-3 rounded-lg w-[80%] mr-auto border border-gray-200 dark:border-transparent">
-              <Loader2 className="animate-spin" />
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <div className="text-gray-800 dark:text-zinc-200 text-sm w-full text-left">
                 Generating response...
               </div>
