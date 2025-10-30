@@ -4,21 +4,20 @@ import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { ArrowRight, Divide, Link2, Loader2 } from "lucide-react";
+import { ArrowRight, Link2, Loader2 } from "lucide-react";
 import ReactMarkDown from "react-markdown";
 import { Message } from "@/store/useWorkspace";
+import { useTheme } from "next-themes";
 
 export interface ChatViewProps {
   messages: Message[];
   onGenerateClick: (prompt: string) => void;
   isGenerating: boolean;  
-  prompt: string;
-  setPrompt: (prompt: string) => void;
 }
 
-export default function ChatView({messages, onGenerateClick, isGenerating, prompt, setPrompt}: ChatViewProps) {
+export default function ChatView({messages, onGenerateClick, isGenerating}: ChatViewProps) {
   const { user } = useUser();
-  
+  const [prompt, setPrompt] = useState<string>("");
   return (
     <div className="flex flex-col h-[85vh] w-[25%]">
       {/* Chat section - takes remaining space */}
@@ -90,11 +89,11 @@ export default function ChatView({messages, onGenerateClick, isGenerating, promp
             name="prompt"
             id="prompt"
             placeholder="Type your idea and we will build it for you."
-            className="flex-1 h-20 rounded-lg outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-400 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 px-3 py-2 text-shadow-white scrollbar-hide resize-none"
+            className="flex-1 h-20 rounded-lg outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-400 bg-white dark:bg-zinc-900 px-3 py-2 text-shadow-white scrollbar-hide resize-none"
           ></textarea>
           <Button
             className="cursor-pointer"
-            onClick={() => onGenerateClick(prompt)}
+            onClick={() => {setPrompt("");onGenerateClick(prompt)}}
             disabled={prompt.trim().length === 0 || isGenerating}
           >
             <ArrowRight />

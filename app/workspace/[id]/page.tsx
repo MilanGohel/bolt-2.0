@@ -2,12 +2,12 @@
 import ChatView from "@/components/ChatView";
 import CodeView from "@/components/CodeView";
 import { api } from "@/convex/_generated/api";
-import { debounce } from "@/lib/utils";
 import { Message, useWorkspace } from "@/store/useWorkspace";
 import { RedirectToSignIn } from "@clerk/nextjs";
 import { SandpackProvider, useActiveCode, useSandpack } from "@codesandbox/sandpack-react";
 import { Authenticated, AuthLoading, Unauthenticated, useAction, useConvex, useMutation, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -18,15 +18,19 @@ export default function Workspace() {
     }
 
     const {
-        files,  
+        files,
         dependencies,
         devDependencies,
         template
     } = useWorkspace();
 
     // keep provider key stable so SandpackProvider is NOT remounted on every files change
-    const providerKey = useMemo(() => `sp-${workspaceId}-${template}`, [workspaceId, template]);
-   
+    // const providerKey = useMemo(() => `sp-${workspaceId}-${template}`, [workspaceId, template]);
+
+
+    useEffect(() => {
+        console.log(files + "files changed in workspace page");
+    }, [files]);
     return (
         <>
             <AuthLoading>
@@ -36,36 +40,20 @@ export default function Workspace() {
                 <RedirectToSignIn />
             </Unauthenticated>
             <Authenticated>
-                <SandpackProvider
-                    key={providerKey}
-                    theme={"dark"}
-                    template={template}
-                    files={files}
-                    customSetup={{
-                        dependencies,
-                        devDependencies
-                    }}
-                    options={{
-                        externalResources: ["https://cdn.tailwindcss.com/"],
-                        recompileDelay: 200,
-                        recompileMode: "immediate"
-                    }}
-                >
-                    <WorkspaceContent workspaceId={workspaceId} />
-                </SandpackProvider>
-            </Authenticated>
+                <WorkspaceContent workspaceId={workspaceId} />
+            </Authenticated >
         </>
     )
 }
 
 function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
-     const convex = useConvex();
-     const workspace = useQuery(api.workspaces.GetWorkspace, {
-         workspaceId,
-     });
-     const { code } = useActiveCode();
-     const { sandpack } = useSandpack();
-     const {
+    const convex = useConvex();
+    const workspace = useQuery(api.workspaces.GetWorkspace, {
+        workspaceId,
+    });
+    const { theme } = useTheme();
+
+    const {
         messages,
         setMessages,
         files,
@@ -79,41 +67,26 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
         addMessage,
         setIsGenerating,
         isGenerating,
-        prompt,
-        setPrompt,
         activeFile
     } = useWorkspace();
-
+    const providerKey = useMemo(() => {
+        const entries = Object.entries(files ?? {}).sort();
+        const fingerprint = entries.map(([name, f]) => `${name}:${(f?.code?.length ?? 0)}`).join("|");
+        return `sp-${template}-${fingerprint}`;
+    }, [files, template]);
     useEffect(() => {
-        debugger;
+
         console.log("hello ")
         loadInitialData();
     }, []);
 
-    useEffect(() => {
-        const newCode = code ?? "";
-        const existing = files?.[sandpack.activeFile.substring(1)]?.code ?? "";
-
-        // avoid updating state if nothing changed
-        if (newCode === existing) return;
-
-        // pass the whole new files object (setFiles expects a full object)
-        const updatedFiles = {
-            ...files,
-            [sandpack.activeFile.substring(1)]: { code: newCode },
-        }
-        // setFiles(updatedFiles);
-        UpdateFileData(updatedFiles);
-    }, [code]);
-
     const loadInitialData = useCallback(async () => {
-        debugger;
         const workspaceData = await convex.query(api.workspaces.GetWorkspace, { workspaceId });
         if (!workspaceData) return;
         setMessages(workspaceData.messages);
         setDependencies(workspaceData.dependencies);
         setDevDependencies(workspaceData.devDependencies || {});
-        debugger;
+
         setFiles(workspaceData.files);
         setTemplate(workspaceData.template ?? "react-ts");
         if (workspaceData.messages.length === 1 && workspaceData.messages[0].role === "user" && !isGenerating) {
@@ -128,15 +101,15 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
     const AddWorkspaceMessage = useMutation(api.workspaces.AddWorkspaceMessage);
 
     const generateAIResponse = async (prompt: string, isFromButtonClick: boolean) => {
-        debugger;
+
         if (isFromButtonClick) {
             setIsGenerating(true);
-            setPrompt("");
             addMessage({ role: "user", parts: [{ text: prompt }] } as Message);
             // await UpdateWorkspaceMessages({ workspaceId, messages: [...messages, { role: "user", parts: [{ text: prompt }] }] });
             await AddWorkspaceMessage({ workspaceId, message: { role: "user", parts: [{ text: prompt }] } });
         }
         // Get AI response (may be string or object)
+        debugger;
         const response = await GenerateAIResponse({ prompt, history: messages });
         if (!response) return;
 
@@ -147,12 +120,12 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
         addMessage(modelMsg);
 
         if (isFromButtonClick) {
-            debugger;
+
             // await UpdateWorkspaceMessages({ workspaceId, messages: [...messages, modelMsg] });
             await AddWorkspaceMessage({ workspaceId, message: modelMsg });
         }
         else {
-            debugger;
+
             // await UpdateWorkspaceMessages({ workspaceId, messages: [...(workspace?.messages || []), modelMsg] });
             await AddWorkspaceMessage({ workspaceId, message: modelMsg });
         }
@@ -183,7 +156,7 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
             newDeps = { ...workspace?.dependencies, ...fileData.dependencies };
             newDevDeps = { ...workspace?.devDependencies, ...fileData.devDependencies }
         }
-        debugger;
+
         setFiles(newFiles);
         setDependencies(newDeps);
         setDevDependencies(newDevDeps);
@@ -199,16 +172,6 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
         generateAIResponse(prompt, true);
     }
 
-    const UpdateFileData = useMemo(
-        () =>
-            debounce((updatedFiles: Record<string, { code: string }>) => {
-                convex.mutation(api.workspaces.UpdateWorkspaceFileData, {
-                    workspaceId,
-                    fileData: { files: updatedFiles },
-                });
-            }, 500),
-        [workspaceId, convex]
-    );
 
     if (!workspace) return <div>Loading...</div>;
 
@@ -216,19 +179,35 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
         <>
             <div className="flex flex-row gap-4 p-4">
                 <ChatView
-                    setPrompt={setPrompt}
-                    prompt={prompt}
                     messages={messages}
                     onGenerateClick={onGenerateClick}
                     isGenerating={isGenerating}
                 />
-                <CodeView
-                    workspaceId={workspaceId}
-                    setFiles={setFiles}
-                    files={files}
-                    dependencies={dependencies}
+                <SandpackProvider
+                    key={providerKey}
+                    theme={theme === "dark" ? "dark" : "light"}
                     template={template}
-                />
+                    files={files}
+                    customSetup={{
+                        dependencies,
+                        devDependencies
+                    }}
+                    options={{
+                        externalResources: ["https://cdn.tailwindcss.com/"],
+                        recompileMode: "immediate",
+                        recompileDelay: 500,
+                    }}
+                    style={{ width: "100%" }}
+                >
+                    <CodeView
+                        workspaceId={workspaceId}
+                        isGenerating={isGenerating}
+                        setFiles={setFiles}
+                        files={files}
+                        dependencies={dependencies}
+                        template={template}
+                    />
+                </SandpackProvider>
             </div>
         </>
     )
