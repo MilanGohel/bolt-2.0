@@ -3,8 +3,10 @@ import ChatView from "@/components/ChatView";
 import CodeView from "@/components/CodeView";
 import { api } from "@/convex/_generated/api";
 import { Message, useWorkspace } from "@/store/useWorkspace";
+import { AIResponse, isAIResponse } from "@/types/aiResponse";
 import { RedirectToSignIn } from "@clerk/nextjs";
 import { SandpackProvider, useActiveCode, useSandpack } from "@codesandbox/sandpack-react";
+import { decode } from "@toon-format/toon";
 import { Authenticated, AuthLoading, Unauthenticated, useAction, useConvex, useMutation, useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -75,8 +77,6 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
         return `sp-${template}-${fingerprint}`;
     }, [files, template]);
     useEffect(() => {
-
-        console.log("hello ")
         loadInitialData();
     }, []);
 
@@ -96,14 +96,13 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
     }, [])
 
     const GenerateAIResponse = useAction(api.workspaces.GenerateAIResponse);
-    const UpdateWorkspaceMessages = useMutation(api.workspaces.UpdateWorkspaceMessages);
     const UpdateWorkspaceFileData = useMutation(api.workspaces.UpdateWorkspaceFileData);
     const AddWorkspaceMessage = useMutation(api.workspaces.AddWorkspaceMessage);
 
     const generateAIResponse = async (prompt: string, isFromButtonClick: boolean) => {
+        setIsGenerating(true);
 
         if (isFromButtonClick) {
-            setIsGenerating(true);
             addMessage({ role: "user", parts: [{ text: prompt }] } as Message);
             // await UpdateWorkspaceMessages({ workspaceId, messages: [...messages, { role: "user", parts: [{ text: prompt }] }] });
             await AddWorkspaceMessage({ workspaceId, message: { role: "user", parts: [{ text: prompt }] } });
