@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bolt 2.0
+
+Bolt 2.0 is a web-based application that allows you to build other web applications by chatting with an AI. You can describe the application you want to build in a prompt, and the AI will generate the code, dependencies, and project structure for you. You can then see the live-running application and the code in a Sandpack environment.
+
+## Technologies Used
+
+*   **Next.js**: A React framework for building server-side rendered and statically generated web applications.
+*   **Convex**: A backend-as-a-service platform for building full-stack applications.
+*   **Clerk**: User management and authentication.
+*   **Google Generative AI**: For generating code and project structure from user prompts.
+*   **Sandpack**: A component for creating live-running code examples.
+*   **Zustand**: A small, fast and scaleable bearbones state-management solution.
+*   **Shadcn UI**: A collection of re-usable components that you can copy and paste into your apps.
+*   **Tailwind CSS**: A utility-first CSS framework for rapidly building custom user interfaces.
 
 ## Getting Started
 
-First, run the development server:
+To get started with Bolt 2.0, you'll need to have Node.js and npm installed on your machine.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1.  Clone the repository:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+    ```bash
+    git clone https://github.com/your-username/bolt-2.0.git
+    ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2.  Install the dependencies:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+    ```bash
+    cd bolt-2.0
+    npm install
+    ```
 
-## Learn More
+3.  Set up your environment variables. Create a `.env.local` file in the root of the project and add the following:
 
-To learn more about Next.js, take a look at the following resources:
+    ```
+    # Clerk
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+    CLERK_SECRET_KEY=
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+    # Convex
+    NEXT_PUBLIC_CONVEX_URL=
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+    # Google Generative AI
+    GOOGLE_API_KEY=
+    ```
 
-## Deploy on Vercel
+4.  Run the development server:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+    ```bash
+    npm run dev
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+    The application will be available at `http://localhost:3000`.
+
+## Features
+
+*   **AI-powered code generation**: Describe your application in a prompt and let the AI generate the code for you.
+*   **Live-running application**: See your application running live in a Sandpack environment.
+*   **Code editor**: View and edit the generated code.
+*   **Authentication**: User authentication and management with Clerk.
+*   **Convex backend**: A full-stack backend with a database and serverless functions.
